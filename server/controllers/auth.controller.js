@@ -1,15 +1,14 @@
 const USER = require('../models/user.module');
 const jwt = require('jsonwebtoken');
 const Token = require('../models/token.module');
-const bcryptjs = require('bcryptjs');
+const bcrypt = require('bcrypt');
 
 const Register = async (req, res) => {
-  const { name, email, password } = req.body;
-
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(req.body.password, salt);
   const user = await USER.create({
-    name,
-    email,
-    password: await bcryptjs.hash(password, 12),
+    ...req.body,
+    password: hash,
   });
 
   res.send(user.name);
@@ -26,7 +25,7 @@ const Login = async (req, res) => {
     });
   }
 
-  if (!(await bcryptjs.compare(password, user.password))) {
+  if (!(await bcrypt.compare(password, user.password))) {
     return res.status(400).send({
       message: 'Invalid credentials',
     });
