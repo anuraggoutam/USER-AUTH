@@ -8,7 +8,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const refresh_secret = process.env.refresh_secret;
 const access_secret = process.env.access_secret;
-
+const CLIENT_URL = process.env.CLIENT_URL;
 const Register = async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -162,9 +162,12 @@ const forgotPassword = async (req, res) => {
     if (!user)
       return res.status(400).json({ msg: 'This email does not exist.' });
 
-    const access_token = jwt.sign({
-      id: user.id,
-    });
+    const access_token = jwt.sign(
+      {
+        id: user.id,
+      },
+      'access_secret'
+    );
 
     const url = `${CLIENT_URL}/user/reset/${access_token}`;
 
@@ -173,7 +176,7 @@ const forgotPassword = async (req, res) => {
       from: 'anuraggoutam01@gmail.com', // Change to your verified sender
       subject: 'Sending with SendGrid is Fun',
       text: 'and easy to do anywhere, even with Node.js',
-      html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+      html: `<h1>hello</h1><br/>for resetting your password <a href=${url}>Click here</a>`,
     };
     sgMail
       .send(msg)
