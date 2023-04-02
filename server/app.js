@@ -1,14 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const connection = require('./config/db');
+const Connect = require('./config/db');
 const dotenv = require('dotenv').config();
 const colors = require('colors');
 const userAuth = require('./routes/userAuth');
 const port = process.env.PORT || 8080;
 const app = express();
 
-connection();
+Connect();
 
 app.use(express.json());
 app.use(cookieParser());

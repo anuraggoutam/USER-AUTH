@@ -1,16 +1,21 @@
 const USER = require('../models/user.module');
 const jwt = require('jsonwebtoken');
 const Token = require('../models/token.module');
-const bcrypt = require('bcrypt');
 const sgMail = require('@sendgrid/mail');
+const bcryptjs = require('bcryptjs');
+
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+const refresh_secret = process.env.refresh_secret;
+const access_secret = process.env.access_secret;
+
 const Register = async (req, res) => {
-  const salt = bcrypt.genSaltSync(10);
-  const hash = bcrypt.hashSync(req.body.password, salt);
+  const { name, email, password } = req.body;
+
   const user = await USER.create({
-    ...req.body,
-    password: hash,
+    name,
+    email,
+    password: await bcryptjs.hash(password, 12),
   });
 
   res.send(user.name);
@@ -27,7 +32,7 @@ const Login = async (req, res) => {
     });
   }
 
-  if (!(await bcrypt.compare(password, user.password))) {
+  if (!(await bcryptjs.compare(password, user.password))) {
     return res.status(400).send({
       message: 'Invalid credentials',
     });
@@ -136,7 +141,7 @@ const Refresh = async (req, res) => {
     });
   }
 };
-// log out
+
 const Logout = async (req, res) => {
   const refreshToken = req.cookies['refreshToken'];
 
@@ -148,15 +153,19 @@ const Logout = async (req, res) => {
     message: 'success',
   });
 };
+
 // forgot password
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await Users.findOne({ email });
+    const user = await USER.findOne({ email });
     if (!user)
       return res.status(400).json({ msg: 'This email does not exist.' });
 
-    const access_token = createAccessToken({ id: user._id });
+    const access_token = jwt.sign({
+      id: user.id,
+    });
+
     const url = `${CLIENT_URL}/user/reset/${access_token}`;
 
     const msg = {
@@ -185,12 +194,11 @@ const resetPassword = async (req, res) => {
   try {
     const { password } = req.body;
     console.log(password);
-    const salt = bcrypt.genSaltSync(10);
-    const hash = bcrypt.hashSync(req.body.password, salt);
-    await Users.findOneAndUpdate(
-      { _id: req.user.id },
+
+    await USER.findOneAndUpdate(
+      { _id: user.id },
       {
-        password: hash,
+        password: await bcryptjs.hash(password, 12),
       }
     );
 
