@@ -2,6 +2,8 @@ const USER = require('../models/user.module');
 const jwt = require('jsonwebtoken');
 const Token = require('../models/token.module');
 const bcrypt = require('bcrypt');
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const Register = async (req, res) => {
   const salt = bcrypt.genSaltSync(10);
@@ -134,7 +136,7 @@ const Refresh = async (req, res) => {
     });
   }
 };
-
+// log out
 const Logout = async (req, res) => {
   const refreshToken = req.cookies['refreshToken'];
 
@@ -146,11 +148,63 @@ const Logout = async (req, res) => {
     message: 'success',
   });
 };
+// forgot password
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await Users.findOne({ email });
+    if (!user)
+      return res.status(400).json({ msg: 'This email does not exist.' });
 
+    const access_token = createAccessToken({ id: user._id });
+    const url = `${CLIENT_URL}/user/reset/${access_token}`;
+
+    const msg = {
+      to: email, // Change to your recipient
+      from: 'anuraggoutam01@gmail.com', // Change to your verified sender
+      subject: 'Sending with SendGrid is Fun',
+      text: 'and easy to do anywhere, even with Node.js',
+      html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+    };
+    sgMail
+      .send(msg)
+      .then(() => {
+        console.log('Email sent');
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    res.json({ msg: 'Re-send the password, please check your email.' });
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
+  }
+};
+// reset password
+const resetPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    console.log(password);
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(req.body.password, salt);
+    await Users.findOneAndUpdate(
+      { _id: req.user.id },
+      {
+        password: hash,
+      }
+    );
+
+    res.json({ msg: 'Password successfully changed!' });
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
+  }
+};
 module.exports = {
   Register,
   Login,
   AuthenticatedUser,
   Refresh,
   Logout,
+  forgotPassword,
+  resetPassword,
 };
